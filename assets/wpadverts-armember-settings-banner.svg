@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="200" viewBox="0 0 750 200" role="img" aria-labelledby="title desc">
+  <title id="title">WPAdverts ARMember</title>
+  <desc id="desc">WPAdverts ARMember settings banner.</desc>
+  <rect width="750" height="200" rx="36" fill="#f0f0f1"/>
+  <g transform="translate(34 20) scale(.3125)">
+    <defs>
+      <linearGradient id="banner-bg" x1="60" y1="54" x2="452" y2="458" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#ff7a45"/>
+        <stop offset="1" stop-color="#0f7ac9"/>
+      </linearGradient>
+      <linearGradient id="banner-paper" x1="118" y1="120" x2="388" y2="406" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#fff"/>
+        <stop offset="1" stop-color="#eaf2f8"/>
+      </linearGradient>
+    </defs>
+    <rect x="48" y="48" width="416" height="416" rx="96" fill="url(#banner-bg)"/>
+    <rect x="88" y="88" width="336" height="336" rx="58" fill="url(#banner-paper)"/>
+    <rect x="88" y="88" width="336" height="82" rx="58" fill="#071c4d"/>
+    <rect x="88" y="130" width="336" height="40" fill="#071c4d"/>
+    <circle cx="136" cy="129" r="10" fill="#ffd3c2"/>
+    <circle cx="170" cy="129" r="10" fill="#ffe7a6"/>
+    <circle cx="204" cy="129" r="10" fill="#87e6c1"/>
+    <rect x="126" y="208" width="132" height="24" rx="12" fill="#73bdf2"/>
+    <rect x="126" y="252" width="184" height="18" rx="9" fill="#b9c9d6"/>
+    <rect x="126" y="286" width="150" height="18" rx="9" fill="#b9c9d6"/>
+    <rect x="126" y="320" width="104" height="18" rx="9" fill="#b9c9d6"/>
+    <path d="M326 202 390 226v62c0 48-27 87-64 104-37-17-64-56-64-104v-62l64-24Z" fill="#071c4d"/>
+    <circle cx="326" cy="270" r="24" fill="#fff"/>
+    <path d="M286 340c5-31 21-47 40-47s35 16 40 47" fill="#fff"/>
+    <path d="m304 348 16 16 34-42" fill="none" stroke="#f26c1f" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="210" y="120" fill="#071c4d" font-family="Verdana, Arial, sans-serif" font-size="36" font-weight="700">WPAdverts_ARMember</text>
+</svg>

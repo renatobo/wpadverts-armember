@@ -1,0 +1,37 @@
+name: Package plugin release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Build plugin
+        run: ./build.sh
+
+      - name: Resolve release files
+        id: release
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          test -f "release-notes/${version}.md"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "asset=wpadverts-armember-${version}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}"
+          "${{ steps.release.outputs.asset }}"
+          --title "WPAdverts_ARMember ${{ steps.release.outputs.version }}"
+          --notes-file "release-notes/${{ steps.release.outputs.version }}.md"

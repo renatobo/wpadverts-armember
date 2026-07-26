@@ -1,0 +1,17 @@
+{
+  "name": "renatobo/wpadverts-armember",
+  "description": "ARMember-aware access control for WPAdverts.",
+  "type": "wordpress-plugin",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=7.4"
+  },
+  "scripts": {
+    "lint": [
+      "@php -l wpadverts-armember.php",
+      "@php -l includes/class-wpaag-plugin.php",
+      "@php -l uninstall.php"
+    ],
+    "package": "./build.sh"
+  }
+}

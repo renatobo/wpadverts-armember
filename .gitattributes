@@ -1,0 +1,11 @@
+* text=auto eol=lf
+*.png binary
+*.zip binary
+
+/AGENTS.md export-ignore
+/.github export-ignore
+/.gitignore export-ignore
+/build.sh export-ignore
+/composer.json export-ignore
+/CONTRIBUTING.md export-ignore
+/release.sh export-ignore
