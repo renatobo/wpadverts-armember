@@ -29,6 +29,10 @@ final class WPAAG_Plugin {
     public function register() {
         add_action('template_redirect', array($this, 'protect_frontend'), 1);
         add_filter('rest_pre_dispatch', array($this, 'protect_rest_requests'), 10, 3);
+        add_filter('adverts_form_load', array($this, 'make_frontend_contact_fields_read_only'), 20);
+        add_filter('adverts_add_form_bind', array($this, 'bind_profile_contact_defaults'), 20);
+        add_action('adverts_form_bind', array($this, 'enforce_profile_contact_values'), 20, 2);
+        add_action('adverts_post_save', array($this, 'sync_saved_advert_contact'), 20, 2);
 
         if (is_admin()) {
             add_action('admin_menu', array($this, 'register_settings_page'));
@@ -80,6 +84,123 @@ final class WPAAG_Plugin {
             __('You must be an authorized member to access classifieds.', 'wpadverts-armember'),
             array('status' => 401)
         );
+    }
+
+    /**
+     * Make contact name and email read-only on frontend advert forms.
+     *
+     * The values remain visible for reference and in the form scheme because
+     * WPAdverts contact, notification, and payment features depend on their
+     * metadata. WordPress administration forms remain unchanged.
+     *
+     * @param mixed $form WPAdverts form scheme.
+     * @return mixed
+     */
+    public function make_frontend_contact_fields_read_only($form) {
+        if (is_admin() || !is_user_logged_in() || !is_array($form)) {
+            return $form;
+        }
+
+        if (!isset($form['name']) || 'advert' !== $form['name'] || empty($form['field']) || !is_array($form['field'])) {
+            return $form;
+        }
+
+        foreach ($form['field'] as &$field) {
+            if (
+                !is_array($field)
+                || empty($field['name'])
+                || !in_array($field['name'], array('adverts_person', 'adverts_email'), true)
+            ) {
+                continue;
+            }
+
+            $field['type']        = 'adverts_field_text';
+            $field['description'] = __('From your membership profile. Update your profile to change this value.', 'wpadverts-armember');
+            $field['attr']        = isset($field['attr']) && is_array($field['attr']) ? $field['attr'] : array();
+            $field['attr']['readonly']      = 'readonly';
+            $field['attr']['aria-readonly'] = 'true';
+            $field['class'] = trim(
+                (isset($field['class']) ? $field['class'] : '') . ' wpaag-profile-contact'
+            );
+        }
+        unset($field);
+
+        return $form;
+    }
+
+    /**
+     * Supply profile contact values when a new advert form is initialized.
+     *
+     * @param mixed $bind Form values.
+     * @return mixed
+     */
+    public function bind_profile_contact_defaults($bind) {
+        if (!is_user_logged_in() || !is_array($bind)) {
+            return $bind;
+        }
+
+        $post_id = isset($bind['_post_id']) ? absint($bind['_post_id']) : 0;
+        $contact = $this->get_advert_contact($post_id);
+
+        if ($contact) {
+            $bind['adverts_person'] = $contact['name'];
+            $bind['adverts_email']  = $contact['email'];
+        }
+
+        return $bind;
+    }
+
+    /**
+     * Replace submitted contact values before WPAdverts validation and saving.
+     *
+     * @param mixed $form WPAdverts form object.
+     * @param mixed $data Submitted values.
+     * @return void
+     */
+    public function enforce_profile_contact_values($form, $data) {
+        if (
+            is_admin()
+            || !is_user_logged_in()
+            || !is_object($form)
+            || !method_exists($form, 'set_value')
+        ) {
+            return;
+        }
+
+        $data    = is_array($data) ? $data : array();
+        $post_id = isset($data['_post_id']) ? absint($data['_post_id']) : 0;
+        $contact = $this->get_advert_contact($post_id);
+
+        if (!$contact) {
+            return;
+        }
+
+        $form->set_value('adverts_person', $contact['name']);
+        $form->set_value('adverts_email', $contact['email']);
+    }
+
+    /**
+     * Keep saved advert metadata synchronized with the advert owner's profile.
+     *
+     * @param mixed $form    WPAdverts form object.
+     * @param int   $post_id Saved advert ID.
+     * @return void
+     */
+    public function sync_saved_advert_contact($form, $post_id) {
+        unset($form);
+
+        $post_id = absint($post_id);
+        if (!$post_id || 'advert' !== get_post_type($post_id)) {
+            return;
+        }
+
+        $contact = $this->get_advert_contact($post_id);
+        if (!$contact) {
+            return;
+        }
+
+        update_post_meta($post_id, 'adverts_person', $contact['name']);
+        update_post_meta($post_id, 'adverts_email', $contact['email']);
     }
 
     /**
@@ -329,16 +450,22 @@ final class WPAAG_Plugin {
      * @return array
      */
     public function sanitize_settings($input) {
-        $input = is_array($input) ? $input : array();
-        $mode  = isset($input['access_mode']) ? sanitize_key($input['access_mode']) : 'recognized_user';
+        $input       = is_array($input) ? $input : array();
+        $mode        = isset($input['access_mode']) ? sanitize_key($input['access_mode']) : 'recognized_user';
+        $name_source = isset($input['contact_name_source']) ? sanitize_key($input['contact_name_source']) : 'display_name';
 
         if (!in_array($mode, array('recognized_user', 'valid_plan'), true)) {
             $mode = 'recognized_user';
         }
 
+        if (!in_array($name_source, array('display_name', 'first_last'), true)) {
+            $name_source = 'display_name';
+        }
+
         return array(
-            'access_mode'        => $mode,
+            'access_mode'         => $mode,
             'destination_page_id' => isset($input['destination_page_id']) ? absint($input['destination_page_id']) : 0,
+            'contact_name_source' => $name_source,
         );
     }
 
@@ -438,6 +565,21 @@ final class WPAAG_Plugin {
                             ?>
                         </div>
 
+                        <div class="wpaag-field">
+                            <div>
+                                <label for="wpaag-contact-name-source"><?php esc_html_e('Advert contact name', 'wpadverts-armember'); ?></label>
+                                <p><?php esc_html_e('Contact Person and Email are shown read-only on frontend advert forms and synchronized from the advert owner’s ARMember/WordPress profile.', 'wpadverts-armember'); ?></p>
+                            </div>
+                            <select id="wpaag-contact-name-source" name="<?php echo esc_attr(self::OPTION_NAME); ?>[contact_name_source]">
+                                <option value="display_name" <?php selected($settings['contact_name_source'], 'display_name'); ?>>
+                                    <?php esc_html_e('ARMember/WordPress display name', 'wpadverts-armember'); ?>
+                                </option>
+                                <option value="first_last" <?php selected($settings['contact_name_source'], 'first_last'); ?>>
+                                    <?php esc_html_e('First and last name', 'wpadverts-armember'); ?>
+                                </option>
+                            </select>
+                        </div>
+
                         <div class="wpaag-note">
                             <strong><?php esc_html_e('Protected surfaces', 'wpadverts-armember'); ?></strong>
                             <span><?php esc_html_e('Single adverts, advert archives, advert categories, WPAdverts blocks and shortcodes, publishing and management pages, and advert REST routes.', 'wpadverts-armember'); ?></span>
@@ -494,6 +636,75 @@ final class WPAAG_Plugin {
         return array(
             'access_mode'         => 'recognized_user',
             'destination_page_id' => $login_page ? (int) $login_page->ID : 0,
+            'contact_name_source' => 'display_name',
+        );
+    }
+
+    /**
+     * Resolve the profile contact values for a new or existing advert.
+     *
+     * Existing adverts use their post author so an administrator editing an
+     * advert cannot accidentally replace the owner's contact information.
+     *
+     * @param int $post_id Existing advert ID, or zero for a new advert.
+     * @return array{name:string,email:string}|null
+     */
+    private function get_advert_contact($post_id = 0) {
+        $user_id = get_current_user_id();
+
+        if ($post_id) {
+            $post = get_post($post_id);
+            if ($post instanceof WP_Post && 'advert' === $post->post_type && $post->post_author) {
+                $user_id = (int) $post->post_author;
+            }
+        }
+
+        if (!$user_id) {
+            return null;
+        }
+
+        $user = get_userdata($user_id);
+        if (!($user instanceof WP_User) || !$user->user_email) {
+            return null;
+        }
+
+        $settings = $this->get_settings();
+        $name     = $user->display_name;
+
+        if ('first_last' === $settings['contact_name_source']) {
+            $first_name = trim((string) get_user_meta($user_id, 'first_name', true));
+            $last_name  = trim((string) get_user_meta($user_id, 'last_name', true));
+            $full_name  = trim($first_name . ' ' . $last_name);
+
+            if ('' !== $full_name) {
+                $name = $full_name;
+            }
+        }
+
+        /**
+         * Filter profile-derived contact information before it is saved.
+         *
+         * @param array{name:string,email:string} $contact Profile contact data.
+         * @param int                             $user_id WordPress user ID.
+         * @param int                             $post_id Advert ID, or zero.
+         */
+        $contact = apply_filters(
+            'wpaag_advert_contact',
+            array(
+                'name'  => sanitize_text_field($name),
+                'email' => sanitize_email($user->user_email),
+            ),
+            $user_id,
+            $post_id
+        );
+
+        if (!is_array($contact) || empty($contact['name']) || !is_email($contact['email'])) {
+            return null;
+        }
+
+        return array(
+            'name'  => sanitize_text_field($contact['name']),
+            'email' => sanitize_email($contact['email']),
         );
     }
 

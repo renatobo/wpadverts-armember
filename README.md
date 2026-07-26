@@ -16,6 +16,8 @@ WordPress plugin that protects WPAdverts classifieds with ARMember-aware access 
 - Default mode permits WordPress users recognized by ARMember.
 - Optional strict mode requires an active ARMember account with an effective, non-suspended plan.
 - Configurable destination page for unauthorized visitors.
+- Profile-synchronized advert contact name and email.
+- Configurable display-name or first-and-last-name contact source.
 - Preserves administrator access if ARMember is unavailable.
 - Includes Git Updater metadata for GitHub release installs.
 
@@ -45,6 +47,17 @@ Allows administrators and logged-in users present in ARMember's member table.
 
 Allows administrators and ARMember users whose account is active and who have at least one effective, non-suspended plan.
 
+## Advert contact information
+
+Frontend New Advert and Manage Advert forms display Contact Person and Email as read-only profile information. The plugin synchronizes those values from the advert owner's ARMember-associated WordPress account.
+
+The contact name can use either:
+
+- The ARMember/WordPress display name
+- The account's first and last name, falling back to the display name when both are empty
+
+The email remains stored in WPAdverts metadata so contact forms, notifications, and payment integrations continue to work.
+
 ## Privacy note
 
 The plugin protects WordPress routes and REST data. Standard attachment URLs under `wp-content/uploads` remain directly accessible and should not be used for sensitive private files without a separate authenticated-media solution.
@@ -71,7 +84,7 @@ See [AGENTS.md](AGENTS.md) for repository-specific engineering and release rules
 
 Release notes live in [`release-notes/`](release-notes/). Packaged releases should use matching plugin-header and `readme.txt` versions.
 
-GitHub Releases is the primary distribution channel. Pushing a semantic version tag such as `v0.2.0` runs the packaging workflow and attaches the installable ZIP to the release.
+GitHub Releases is the primary distribution channel. Pushing a semantic version tag such as `v0.3.0` runs the packaging workflow and attaches the installable ZIP to the release.
 
 ## Project files
 

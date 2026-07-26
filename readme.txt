@@ -4,7 +4,7 @@ Tags: wpadverts, armember, membership, access-control
 Requires at least: 6.6
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 0.2.0
+Stable tag: 0.3.0
 License: GPLv2 or later
 
 Restricts WPAdverts pages, listings, category archives, and REST routes to ARMember users.
@@ -30,6 +30,12 @@ Standard files in WordPress uploads remain directly accessible. This plugin
 protects pages and REST data, not attachment-file URLs.
 
 == Changelog ==
+
+= 0.3.0 =
+* Made Contact Person and Email read-only on frontend New Advert and Manage Advert forms.
+* Synchronized advert contact metadata from the advert owner's ARMember/WordPress profile.
+* Added display-name and first-and-last-name contact name sources.
+* Prevented submitted read-only contact values from overriding profile data.
 
 = 0.2.0 =
 * Added ARMember-aware protection for WPAdverts pages, listings, taxonomies, blocks, shortcodes, and REST routes.
