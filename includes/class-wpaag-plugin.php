@@ -6,9 +6,64 @@ final class WPAAG_Plugin {
     const OPTION_NAME = 'wpaag_settings';
 
     /**
+     * WPAdverts blocks that expose classifieds.
+     */
+    const PROTECTED_BLOCKS = array(
+        'wpadverts/categories',
+        'wpadverts/list',
+        'wpadverts/manage',
+        'wpadverts/publish',
+        'wpadverts/search',
+    );
+
+    /**
+     * WPAdverts admin-ajax actions that expose or modify classifieds.
+     *
+     * These run through admin-ajax.php, which bypasses template_redirect and
+     * the block and shortcode render guards.
+     */
+    const PROTECTED_AJAX_ACTIONS = array(
+        'adext_payments_complete_payment',
+        'adext_payments_render',
+        'adverts_delete',
+        'adverts_delete_tmp',
+        'adverts_delete_tmp_files',
+        'adverts_gallery_delete',
+        'adverts_gallery_delete_file',
+        'adverts_gallery_image_restore',
+        'adverts_gallery_image_save',
+        'adverts_gallery_image_stream',
+        'adverts_gallery_update',
+        'adverts_gallery_update_order',
+        'adverts_gallery_upload',
+        'adverts_gallery_video_cover',
+        'adverts_show_contact',
+        'wpadverts-contact-form-submit',
+        'wpadverts-taxonomy',
+    );
+
+    /**
+     * WPAdverts shortcodes that expose classifieds.
+     */
+    const PROTECTED_SHORTCODES = array(
+        'advert_single',
+        'adverts_add',
+        'adverts_block',
+        'adverts_categories',
+        'adverts_list',
+        'adverts_manage',
+        'adverts_payments_checkout',
+    );
+
+    /**
      * @var WPAAG_Plugin|null
      */
     private static $instance = null;
+
+    /**
+     * @var array<int,bool>
+     */
+    private $access_cache = array();
 
     /**
      * @return WPAAG_Plugin
@@ -28,7 +83,15 @@ final class WPAAG_Plugin {
      */
     public function register() {
         add_action('template_redirect', array($this, 'protect_frontend'), 1);
+        add_action('pre_get_posts', array($this, 'exclude_adverts_from_search'), 20);
+        add_filter('render_block', array($this, 'protect_rendered_blocks'), 10, 2);
+        add_filter('do_shortcode_tag', array($this, 'protect_rendered_shortcodes'), 10, 2);
         add_filter('rest_pre_dispatch', array($this, 'protect_rest_requests'), 10, 3);
+
+        foreach (self::PROTECTED_AJAX_ACTIONS as $ajax_action) {
+            add_action('wp_ajax_' . $ajax_action, array($this, 'protect_ajax_request'), 1);
+            add_action('wp_ajax_nopriv_' . $ajax_action, array($this, 'protect_ajax_request'), 1);
+        }
         add_filter('adverts_form_load', array($this, 'make_frontend_contact_fields_read_only'), 20);
         add_filter('adverts_add_form_bind', array($this, 'bind_profile_contact_defaults'), 20);
         add_action('adverts_form_bind', array($this, 'enforce_profile_contact_values'), 20, 2);
@@ -60,6 +123,137 @@ final class WPAAG_Plugin {
     }
 
     /**
+     * Deny WPAdverts admin-ajax actions to unauthorized visitors.
+     *
+     * Registered at priority 1 so it runs before the WPAdverts handlers.
+     *
+     * @return void
+     */
+    public function protect_ajax_request() {
+        if ($this->current_user_can_access()) {
+            return;
+        }
+
+        wp_send_json_error(
+            array('message' => __('You must be an authorized member to access classifieds.', 'wpadverts-armember')),
+            401
+        );
+    }
+
+    /**
+     * Remove adverts from frontend search results for unauthorized visitors.
+     *
+     * Adverts are a public post type, so a plain /?s=term query would expose
+     * advert titles and excerpts without ever hitting a protected surface.
+     *
+     * @param WP_Query $query Query being prepared.
+     * @return void
+     */
+    public function exclude_adverts_from_search($query) {
+        if (!($query instanceof WP_Query) || is_admin()) {
+            return;
+        }
+
+        // REST search with no term leaves is_search() false, but the search
+        // handler still puts the requested subtypes into post_type.
+        $is_rest_advert_query = defined('REST_REQUEST') && REST_REQUEST
+            && in_array('advert', (array) $query->get('post_type'), true);
+
+        if (!$query->is_search() && !$is_rest_advert_query) {
+            return;
+        }
+
+        if ($this->current_user_can_access()) {
+            return;
+        }
+
+        $post_types = $query->get('post_type');
+
+        if (empty($post_types) || 'any' === $post_types) {
+            $post_types = get_post_types(array('exclude_from_search' => false));
+        }
+
+        $post_types = array_diff((array) $post_types, array('advert'));
+
+        if (empty($post_types)) {
+            $query->set('post__in', array(0));
+            return;
+        }
+
+        $query->set('post_type', array_values($post_types));
+    }
+
+    /**
+     * Blank WPAdverts blocks rendered outside page content.
+     *
+     * Block themes can place WPAdverts blocks in templates, template parts,
+     * synced patterns, and widget areas, none of which appear in post_content
+     * and therefore none of which the template_redirect check can detect.
+     *
+     * @param string $content    Rendered block markup.
+     * @param array  $parsed_block Parsed block data.
+     * @return string
+     */
+    public function protect_rendered_blocks($content, $parsed_block) {
+        if ($this->is_wp_admin_request() || !is_array($parsed_block) || empty($parsed_block['blockName'])) {
+            return $content;
+        }
+
+        if (0 !== strpos($parsed_block['blockName'], 'wpadverts/')) {
+            return $content;
+        }
+
+        if ($this->current_user_can_access()) {
+            return $content;
+        }
+
+        return $this->blocked_content_notice();
+    }
+
+    /**
+     * Blank WPAdverts shortcodes rendered outside page content.
+     *
+     * Template parts, synced patterns, widgets, and other plugins can render
+     * WPAdverts shortcodes without them appearing in post_content.
+     *
+     * @param string $output Rendered shortcode markup.
+     * @param string $tag    Shortcode name.
+     * @return string
+     */
+    public function protect_rendered_shortcodes($output, $tag) {
+        if ($this->is_wp_admin_request() || !in_array($tag, self::PROTECTED_SHORTCODES, true)) {
+            return $output;
+        }
+
+        if ($this->current_user_can_access()) {
+            return $output;
+        }
+
+        return $this->blocked_content_notice();
+    }
+
+    /**
+     * Whether the request targets wp-admin proper, excluding admin-ajax.php.
+     *
+     * @return bool
+     */
+    private function is_wp_admin_request() {
+        return is_admin() && !wp_doing_ajax();
+    }
+
+    /**
+     * Replacement markup shown where protected content was removed.
+     *
+     * @return string
+     */
+    private function blocked_content_notice() {
+        return sprintf(
+            '<div class="wpaag-blocked-content"><p>%s</p></div>',
+            esc_html__('You must be an authorized member to view classifieds.', 'wpadverts-armember')
+        );
+    }
+
+    /**
      * Protect REST endpoints that expose adverts.
      *
      * @param mixed           $result  Response to replace the requested version with.
@@ -75,7 +269,7 @@ final class WPAAG_Plugin {
         }
 
         $route = $request->get_route();
-        if (!$this->is_protected_rest_route($route)) {
+        if (!$this->is_protected_rest_route($route, $request)) {
             return $result;
         }
 
@@ -214,6 +408,13 @@ final class WPAAG_Plugin {
         }
 
         $user_id = get_current_user_id();
+
+        // Access is evaluated on every block render and search query, so the
+        // per-user decision is memoized for the duration of the request.
+        if (isset($this->access_cache[$user_id])) {
+            return $this->access_cache[$user_id];
+        }
+
         $allowed = user_can($user_id, 'manage_options');
 
         if (!$allowed && function_exists('arm_get_member_status')) {
@@ -231,7 +432,9 @@ final class WPAAG_Plugin {
          * @param bool $allowed Access decision.
          * @param int  $user_id WordPress user ID.
          */
-        return (bool) apply_filters('wpaag_user_can_access', $allowed, $user_id);
+        $this->access_cache[$user_id] = (bool) apply_filters('wpaag_user_can_access', $allowed, $user_id);
+
+        return $this->access_cache[$user_id];
     }
 
     /**
@@ -282,31 +485,13 @@ final class WPAAG_Plugin {
             return false;
         }
 
-        $protected_blocks = array(
-            'wpadverts/categories',
-            'wpadverts/list',
-            'wpadverts/manage',
-            'wpadverts/publish',
-            'wpadverts/search',
-        );
-
-        foreach ($protected_blocks as $block_name) {
+        foreach (self::PROTECTED_BLOCKS as $block_name) {
             if (has_block($block_name, $post)) {
                 return true;
             }
         }
 
-        $protected_shortcodes = array(
-            'advert_single',
-            'adverts_add',
-            'adverts_block',
-            'adverts_categories',
-            'adverts_list',
-            'adverts_manage',
-            'adverts_payments_checkout',
-        );
-
-        foreach ($protected_shortcodes as $shortcode) {
+        foreach (self::PROTECTED_SHORTCODES as $shortcode) {
             if (has_shortcode($post->post_content, $shortcode)) {
                 return true;
             }
@@ -324,10 +509,15 @@ final class WPAAG_Plugin {
     /**
      * Identify REST routes that can expose adverts.
      *
-     * @param string $route REST route.
+     * Route prefixes cover the dedicated advert endpoints. Core also exposes
+     * advert data through generic routes, so those are resolved by post type
+     * rather than by route string.
+     *
+     * @param string          $route   REST route.
+     * @param WP_REST_Request $request Request object.
      * @return bool
      */
-    private function is_protected_rest_route($route) {
+    private function is_protected_rest_route($route, $request) {
         $prefixes = array(
             '/wp/v2/advert',
             '/wp/v2/advert_category',
@@ -337,6 +527,39 @@ final class WPAAG_Plugin {
         foreach ($prefixes as $prefix) {
             if (0 === strpos($route, $prefix)) {
                 return true;
+            }
+        }
+
+        if (0 === strpos($route, '/oembed/')) {
+            $url     = (string) $request->get_param('url');
+            $post_id = $url ? url_to_postid($url) : 0;
+
+            return $post_id && 'advert' === get_post_type($post_id);
+        }
+
+        if (0 === strpos($route, '/wp/v2/search')) {
+            // Requests that do not name adverts explicitly stay available; the
+            // pre_get_posts filter strips adverts from their results instead,
+            // so site-wide REST search keeps working for anonymous visitors.
+            $subtypes = array_filter((array) $request->get_param('subtype'));
+
+            return in_array('advert', $subtypes, true);
+        }
+
+        foreach (array('/wp/v2/media', '/wp/v2/comments') as $prefix) {
+            if (0 !== strpos($route, $prefix)) {
+                continue;
+            }
+
+            $parents = $request->get_param('parent');
+            if (null === $parents || array() === $parents) {
+                $parents = $request->get_param('post');
+            }
+
+            foreach ((array) $parents as $parent_id) {
+                if ('advert' === get_post_type(absint($parent_id))) {
+                    return true;
+                }
             }
         }
 
@@ -368,7 +591,7 @@ final class WPAAG_Plugin {
             $destination_url = wp_login_url();
         }
 
-        $destination_url = add_query_arg('redirect_to', $target, $destination_url);
+        $destination_url = add_query_arg('redirect_to', rawurlencode($target), $destination_url);
         wp_safe_redirect($destination_url, 302, 'WPAdverts_ARMember');
         exit;
     }

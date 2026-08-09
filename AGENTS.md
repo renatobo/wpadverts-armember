@@ -3,7 +3,7 @@
 ## Scope
 
 - This repository contains the `WPAdverts_ARMember` WordPress plugin.
-- Keep runtime code compatible with PHP 7.4+ and WordPress 6.6+.
+- Keep runtime code compatible with PHP 8.0+ and WordPress 7.0+.
 - Treat WPAdverts and ARMember as optional runtime dependencies: the plugin must fail closed for ordinary users and preserve administrator access when ARMember is unavailable.
 
 ## Access-Control Rules

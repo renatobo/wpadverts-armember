@@ -2,8 +2,8 @@
 
 ![WPAdverts_ARMember](assets/wpadverts-armember-settings-banner.svg)
 
-[![WordPress](https://img.shields.io/badge/WordPress-6.6%2B-21759B?logo=wordpress&logoColor=white)](https://wordpress.org/)
-[![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
+[![WordPress](https://img.shields.io/badge/WordPress-7.0%2B-21759B?logo=wordpress&logoColor=white)](https://wordpress.org/)
+[![PHP](https://img.shields.io/badge/PHP-8.0%2B-777bb4?logo=php&logoColor=white)](https://www.php.net/)
 [![Tested up to](https://img.shields.io/badge/Tested%20up%20to-7.0.2-21759B?logo=wordpress&logoColor=white)](https://wordpress.org/)
 [![Release](https://img.shields.io/github/v/release/renatobo/wpadverts-armember?label=release)](https://github.com/renatobo/wpadverts-armember/releases)
 [![License: GPL v2 or later](https://img.shields.io/badge/License-GPL%20v2%20or%20later-blue.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
@@ -23,10 +23,19 @@ WordPress plugin that protects WPAdverts classifieds with ARMember-aware access 
 
 ## Requirements
 
-- WordPress 6.6+
-- PHP 7.4+
-- WPAdverts
-- ARMember
+- WordPress 7.0+
+- PHP 8.0+
+- WP Adverts (`wpadverts`)
+- ARMember Lite (`armember-membership`)
+
+Both are declared in the `Requires Plugins` header, so WordPress blocks
+activation until they are installed and active.
+
+Plugin dependencies are matched by folder slug, and ARMember premium installs as
+`armember`, not `armember-membership`. On a premium site, drop
+`armember-membership` from the `Requires Plugins` header in
+`wpadverts-armember.php` and `readme.txt`; the runtime admin notice still
+reports when ARMember is unavailable.
 
 ## Installation
 
@@ -66,7 +75,7 @@ The plugin protects WordPress routes and REST data. Standard attachment URLs und
 
 Requirements:
 
-- PHP 7.4 or newer
+- PHP 8.0 or newer
 - Composer 2 for metadata validation and the lint command
 - `zip`, `unzip`, and `rsync` for packaging
 

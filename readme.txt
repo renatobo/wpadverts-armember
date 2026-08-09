@@ -1,10 +1,11 @@
 === WPAdverts_ARMember ===
 Contributors: droc
 Tags: wpadverts, armember, membership, access-control
-Requires at least: 6.6
-Tested up to: 7.0
-Requires PHP: 7.4
-Stable tag: 0.3.0
+Requires at least: 7.0
+Tested up to: 7.0.2
+Requires PHP: 8.0
+Requires Plugins: wpadverts, armember-membership
+Stable tag: 0.4.0
 License: GPLv2 or later
 
 Restricts WPAdverts pages, listings, category archives, and REST routes to ARMember users.
@@ -29,7 +30,25 @@ Protected frontend surfaces include:
 Standard files in WordPress uploads remain directly accessible. This plugin
 protects pages and REST data, not attachment-file URLs.
 
+== Requirements ==
+
+WP Adverts (`wpadverts`) and ARMember Lite (`armember-membership`) are declared
+as required plugins, so WordPress blocks activation until both are active.
+
+Sites running ARMember premium (the `armember` plugin folder) do not satisfy the
+`armember-membership` dependency, because plugin dependencies are matched by
+folder slug. Remove `armember-membership` from the `Requires Plugins` header on
+those installations.
+
 == Changelog ==
+
+= 0.4.0 =
+* Closed REST access-control bypasses through oEmbed, search, media, and comment routes.
+* Removed adverts from frontend and REST search results for unauthorized visitors.
+* Blanked WPAdverts blocks and shortcodes rendered from block-theme templates, template parts, patterns, and widgets.
+* Denied WPAdverts admin-ajax actions, including the public contact and gallery endpoints, to unauthorized visitors.
+* URL-encoded the `redirect_to` value on login redirects.
+* Raised requirements to WordPress 7.0 and PHP 8.0, and declared WP Adverts and ARMember Lite as required plugins.
 
 = 0.3.0 =
 * Made Contact Person and Email read-only on frontend New Advert and Manage Advert forms.
