@@ -1,11 +1,11 @@
-=== WPAdverts_ARMember ===
+=== WP Adverts <> ARMember ===
 Contributors: droc
 Tags: wpadverts, armember, membership, access-control
 Requires at least: 7.0
 Tested up to: 7.0.2
 Requires PHP: 8.0
 Requires Plugins: wpadverts, armember-membership
-Stable tag: 0.4.0
+Stable tag: 0.4.1
 License: GPLv2 or later
 
 Restricts WPAdverts pages, listings, category archives, and REST routes to ARMember users.
@@ -17,7 +17,7 @@ ARMember's member table. A stricter setting requires an active ARMember account
 with at least one effective, non-suspended membership plan.
 
 Configure the access mode and unauthorized-visitor destination page under
-Settings > WPAdverts_ARMember.
+Settings > WP Adverts <> ARMember.
 
 Protected frontend surfaces include:
 
@@ -41,6 +41,9 @@ folder slug. Remove `armember-membership` from the `Requires Plugins` header on
 those installations.
 
 == Changelog ==
+
+= 0.4.1 =
+* Displayed the plugin as "WP Adverts <> ARMember" on the Plugins screen, Settings menu, and settings page. Installation identifiers are unchanged.
 
 = 0.4.0 =
 * Closed REST access-control bypasses through oEmbed, search, media, and comment routes.

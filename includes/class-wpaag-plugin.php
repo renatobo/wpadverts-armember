@@ -603,8 +603,8 @@ final class WPAAG_Plugin {
      */
     public function register_settings_page() {
         add_options_page(
-            __('WPAdverts_ARMember', 'wpadverts-armember'),
-            __('WPAdverts_ARMember', 'wpadverts-armember'),
+            __('WP Adverts <> ARMember', 'wpadverts-armember'),
+            __('WP Adverts <> ARMember', 'wpadverts-armember'),
             'manage_options',
             'wpaag-settings',
             array($this, 'render_settings_page')
@@ -714,7 +714,7 @@ final class WPAAG_Plugin {
                 <div class="wpaag-hero">
                     <img
                         src="<?php echo esc_url($banner_url); ?>"
-                        alt="<?php echo esc_attr__('WPAdverts_ARMember settings banner', 'wpadverts-armember'); ?>"
+                        alt="<?php echo esc_attr__('WP Adverts <> ARMember settings banner', 'wpadverts-armember'); ?>"
                         class="wpaag-hero-image"
                     />
                 </div>
@@ -741,7 +741,7 @@ final class WPAAG_Plugin {
                 </div>
 
                 <div class="wpaag-headline">
-                    <h1><?php esc_html_e('WPAdverts_ARMember Settings', 'wpadverts-armember'); ?></h1>
+                    <h1><?php esc_html_e('WP Adverts <> ARMember Settings', 'wpadverts-armember'); ?></h1>
                     <p>
                         <?php esc_html_e('Protect WPAdverts listings, categories, publishing pages, and REST data with ARMember-aware access rules.', 'wpadverts-armember'); ?>
                     </p>
@@ -830,7 +830,7 @@ final class WPAAG_Plugin {
         }
 
         echo '<div class="notice notice-error"><p>';
-        esc_html_e('WPAdverts_ARMember is active, but ARMember is unavailable. Only administrators can access protected classifieds.', 'wpadverts-armember');
+        esc_html_e('WP Adverts <> ARMember is active, but ARMember is unavailable. Only administrators can access protected classifieds.', 'wpadverts-armember');
         echo '</p></div>';
     }
 

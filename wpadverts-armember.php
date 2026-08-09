@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       WPAdverts_ARMember
+ * Plugin Name:       WP Adverts <> ARMember
  * Plugin URI:        https://github.com/renatobo/wpadverts-armember
  * Description:       Protects WPAdverts listings and publishing surfaces with ARMember-aware access control.
- * Version:           0.4.0
+ * Version:           0.4.1
  * Requires at least: 7.0
  * Requires PHP:      8.0
  * Requires Plugins:  wpadverts, armember-membership
@@ -23,7 +23,7 @@
 
 defined('ABSPATH') || exit;
 
-define('WPAAG_VERSION', '0.4.0');
+define('WPAAG_VERSION', '0.4.1');
 define('WPAAG_PLUGIN_FILE', __FILE__);
 define('WPAAG_PLUGIN_DIR', plugin_dir_path(__FILE__));
 

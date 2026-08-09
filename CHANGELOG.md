@@ -4,6 +4,12 @@ All notable changes to WPAdverts_ARMember are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.1] - 2026-08-09
+
+### Changed
+
+- Renamed the displayed plugin name to "WP Adverts <> ARMember" on the Plugins screen, Settings menu, and settings page. The plugin directory, main file, text domain, settings page slug, and option name are unchanged.
+
 ## [0.4.0] - 2026-08-09
 
 ### Security
@@ -42,6 +48,7 @@ The project uses [Semantic Versioning](https://semver.org/).
 - Branded administrator interface and Git Updater metadata.
 - Project artwork, release documentation, security policy, and packaging workflow.
 
+[0.4.1]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.4.1
 [0.4.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.4.0
 [0.3.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.3.0
 [0.2.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.2.0
