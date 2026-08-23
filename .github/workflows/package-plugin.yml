@@ -25,7 +25,7 @@ jobs:
           version="${GITHUB_REF_NAME#v}"
           test -f "release-notes/${version}.md"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "asset=wpadverts-armember-${version}.zip" >> "$GITHUB_OUTPUT"
+          echo "asset=dist/wpadverts-armember-${version}.zip" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         env:

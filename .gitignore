@@ -3,3 +3,6 @@
 vendor/
 .phpunit.result.cache
 .phpcs-cache
+
+# Release archives are built locally into dist/ and attached to GitHub releases.
+/dist/

@@ -19,7 +19,9 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-OUTPUT_PATH="$PWD/${PLUGIN_SLUG}-${VERSION}.zip"
+DIST_DIR="$PWD/dist"
+mkdir -p "$DIST_DIR"
+OUTPUT_PATH="$DIST_DIR/${PLUGIN_SLUG}-${VERSION}.zip"
 STAGING_DIR="$(mktemp -d)"
 PACKAGE_DIR="$STAGING_DIR/$PLUGIN_SLUG"
 
@@ -37,6 +39,8 @@ rsync -a \
   --exclude '.editorconfig' \
   --exclude '.gitattributes' \
   --exclude '.gitignore' \
+  --exclude '/dist' \
+  --exclude '/dist/**' \
   --exclude '*.zip' \
   --exclude 'AGENTS.md' \
   --exclude 'CONTRIBUTING.md' \
