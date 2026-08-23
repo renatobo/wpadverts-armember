@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">WP Adverts &lt;&gt; ARMember</title>
+  <desc id="desc">Repository social preview for the WP Adverts to ARMember integration plugin.</desc>
+  <defs>
+    <linearGradient id="page" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071c4d"/>
+      <stop offset="1" stop-color="#0a2f6b"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="240" y1="120" x2="620" y2="560" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff7a45" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#0f7ac9" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="60" y1="54" x2="452" y2="458" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff7a45"/>
+      <stop offset="1" stop-color="#0f7ac9"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="118" y1="120" x2="388" y2="406" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eaf2f8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="640" fill="url(#page)"/>
+  <circle cx="330" cy="320" r="360" fill="url(#glow)"/>
+  <rect x="0" y="0" width="1280" height="8" fill="#f26c1f"/>
+
+  <g transform="translate(104,144) scale(0.68)">
+    <rect x="48" y="48" width="416" height="416" rx="96" fill="url(#bg)"/>
+    <rect x="88" y="88" width="336" height="336" rx="58" fill="url(#paper)"/>
+    <rect x="88" y="88" width="336" height="82" rx="58" fill="#071c4d"/>
+    <rect x="88" y="130" width="336" height="40" fill="#071c4d"/>
+    <circle cx="136" cy="129" r="10" fill="#ffd3c2"/>
+    <circle cx="170" cy="129" r="10" fill="#ffe7a6"/>
+    <circle cx="204" cy="129" r="10" fill="#87e6c1"/>
+    <rect x="126" y="208" width="132" height="24" rx="12" fill="#73bdf2"/>
+    <rect x="126" y="252" width="184" height="18" rx="9" fill="#b9c9d6"/>
+    <rect x="126" y="286" width="150" height="18" rx="9" fill="#b9c9d6"/>
+    <rect x="126" y="320" width="104" height="18" rx="9" fill="#b9c9d6"/>
+    <path d="M326 202 390 226v62c0 48-27 87-64 104-37-17-64-56-64-104v-62l64-24Z" fill="#071c4d"/>
+    <circle cx="326" cy="270" r="24" fill="#fff"/>
+    <path d="M286 340c5-31 21-47 40-47s35 16 40 47" fill="#fff"/>
+    <path d="m304 348 16 16 34-42" fill="none" stroke="#f26c1f" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <g font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+    <text x="512" y="214" fill="#ff9d6e" font-size="26" font-weight="700" letter-spacing="4">WORDPRESS PLUGIN</text>
+    <text x="512" y="302" fill="#ffffff" font-size="72" font-weight="700">WP Adverts</text>
+    <text x="512" y="386" fill="#ffffff" font-size="72" font-weight="700">
+      <tspan fill="#f26c1f">&lt;&gt;</tspan><tspan dx="18">ARMember</tspan>
+    </text>
+    <text x="512" y="452" fill="#b9c9d6" font-size="28">Membership-aware access control for</text>
+    <text x="512" y="492" fill="#b9c9d6" font-size="28">WPAdverts listings and publishing.</text>
+
+    <g font-size="22" font-weight="600">
+      <rect x="512" y="530" width="196" height="48" rx="24" fill="#ffffff" fill-opacity=".08" stroke="#ffffff" stroke-opacity=".22"/>
+      <text x="610" y="561" fill="#e6eef6" text-anchor="middle">Plan gating</text>
+      <rect x="726" y="530" width="216" height="48" rx="24" fill="#ffffff" fill-opacity=".08" stroke="#ffffff" stroke-opacity=".22"/>
+      <text x="834" y="561" fill="#e6eef6" text-anchor="middle">Profile sync</text>
+      <rect x="960" y="530" width="216" height="48" rx="24" fill="#ffffff" fill-opacity=".08" stroke="#ffffff" stroke-opacity=".22"/>
+      <text x="1068" y="561" fill="#e6eef6" text-anchor="middle">GPLv2</text>
+    </g>
+  </g>
+</svg>
