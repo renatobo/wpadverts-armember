@@ -6,12 +6,22 @@
   "require": {
     "php": ">=8.0"
   },
+  "require-dev": {
+    "phpunit/phpunit": "^9.6"
+  },
+  "config": {
+    "platform": {
+      "php": "8.0.30"
+    },
+    "sort-packages": true
+  },
   "scripts": {
     "lint": [
       "@php -l wpadverts-armember.php",
       "@php -l includes/class-wpaag-plugin.php",
       "@php -l uninstall.php"
     ],
+    "test": "phpunit",
     "package": "./build.sh"
   }
 }

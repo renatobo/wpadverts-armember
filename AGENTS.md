@@ -9,10 +9,10 @@
 ## Access-Control Rules
 
 - Protect WPAdverts frontend pages and advert REST routes consistently.
-- The default mode accepts a logged-in WordPress user recognized by ARMember.
+- The default mode accepts a logged-in WordPress user whose ARMember account is active. ARMember registers every WordPress user as active, so presence in its member table is not a membership signal.
 - The strict mode requires an active ARMember account and an effective, non-suspended plan.
 - Preserve the `wpaag_user_can_access` and `wpaag_is_protected_page` filters.
-- Unauthorized frontend visitors must be redirected to the configured WordPress page with the original URL in `redirect_to`.
+- Unauthorized frontend visitors must be redirected to the configured WordPress page with the original URL in `redirect_to`. Logged-in visitors use the logged-in destination when one is set.
 - Unauthorized REST requests must return a structured `WP_Error` with HTTP 401.
 
 ## WordPress Engineering
@@ -36,6 +36,7 @@
 ## Validation
 
 - Run `composer lint` for PHP syntax checks.
+- Run `composer test` for the PHPUnit access-control suite, and add a test for every access-rule change.
 - Run `./build.sh` and test the resulting archive before release.
 - Verify logged-out classifieds redirect to the selected destination.
 - Verify logged-out `/wp-json/wp/v2/advert` requests return HTTP 401.

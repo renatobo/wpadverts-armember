@@ -66,6 +66,11 @@ final class WPAAG_Plugin {
     private $access_cache = array();
 
     /**
+     * Settings memoized for the duration of the request.
+     */
+    private ?array $settings = null;
+
+    /**
      * @return WPAAG_Plugin
      */
     public static function instance() {
@@ -87,6 +92,11 @@ final class WPAAG_Plugin {
         add_filter('render_block', array($this, 'protect_rendered_blocks'), 10, 2);
         add_filter('do_shortcode_tag', array($this, 'protect_rendered_shortcodes'), 10, 2);
         add_filter('rest_pre_dispatch', array($this, 'protect_rest_requests'), 10, 3);
+        add_filter('rest_attachment_query', array($this, 'exclude_advert_attachments_from_rest'));
+        add_filter('rest_comment_query', array($this, 'exclude_advert_comments_from_rest'));
+        add_filter('posts_where', array($this, 'filter_advert_attachment_where'), 10, 2);
+        add_filter('wp_sitemaps_post_types', array($this, 'exclude_adverts_from_sitemaps'));
+        add_filter('wp_sitemaps_taxonomies', array($this, 'exclude_advert_categories_from_sitemaps'));
 
         foreach (self::PROTECTED_AJAX_ACTIONS as $ajax_action) {
             add_action('wp_ajax_' . $ajax_action, array($this, 'protect_ajax_request'), 1);
@@ -116,6 +126,13 @@ final class WPAAG_Plugin {
      */
     public function protect_frontend() {
         if (!$this->is_protected_frontend_request() || $this->current_user_can_access()) {
+            return;
+        }
+
+        // Never redirect a visitor away from the destination page itself; the
+        // block and shortcode filters still blank any classifieds it contains.
+        $destination_id = $this->get_destination_page_id();
+        if ($destination_id && is_page($destination_id)) {
             return;
         }
 
@@ -199,7 +216,7 @@ final class WPAAG_Plugin {
             return $content;
         }
 
-        if (0 !== strpos($parsed_block['blockName'], 'wpadverts/')) {
+        if (!str_starts_with($parsed_block['blockName'], 'wpadverts/')) {
             return $content;
         }
 
@@ -281,6 +298,87 @@ final class WPAAG_Plugin {
     }
 
     /**
+     * Flag REST media collection queries so advert attachments are excluded.
+     *
+     * Requests scoped to an advert parent are already denied; this covers
+     * unscoped listings such as /wp/v2/media and /wp/v2/media?search=.
+     *
+     * @param array $args WP_Query arguments.
+     * @return array
+     */
+    public function exclude_advert_attachments_from_rest($args) {
+        if (is_array($args) && !$this->current_user_can_access()) {
+            $args['wpaag_exclude_advert_children'] = true;
+        }
+
+        return $args;
+    }
+
+    /**
+     * Restrict flagged attachment queries to items not attached to adverts.
+     *
+     * @param string   $where WHERE clause.
+     * @param WP_Query $query Query being run.
+     * @return string
+     */
+    public function filter_advert_attachment_where($where, $query) {
+        if (!($query instanceof WP_Query) || !$query->get('wpaag_exclude_advert_children')) {
+            return $where;
+        }
+
+        global $wpdb;
+
+        return $where . " AND {$wpdb->posts}.post_parent NOT IN (SELECT wpaag_parent.ID FROM {$wpdb->posts} AS wpaag_parent WHERE wpaag_parent.post_type = 'advert')";
+    }
+
+    /**
+     * Remove comments on adverts from REST comment collections.
+     *
+     * @param array $args WP_Comment_Query arguments.
+     * @return array
+     */
+    public function exclude_advert_comments_from_rest($args) {
+        if (!is_array($args) || $this->current_user_can_access()) {
+            return $args;
+        }
+
+        $post_types = empty($args['post_type']) ? get_post_types() : (array) $args['post_type'];
+        $post_types = array_values(array_diff($post_types, array('advert')));
+
+        $args['post_type'] = $post_types ? $post_types : array('wpaag_none');
+
+        return $args;
+    }
+
+    /**
+     * Keep adverts out of the core XML sitemap for unauthorized visitors.
+     *
+     * @param array<string,WP_Post_Type> $post_types Sitemap post types.
+     * @return array<string,WP_Post_Type>
+     */
+    public function exclude_adverts_from_sitemaps($post_types) {
+        if (is_array($post_types) && !$this->current_user_can_access()) {
+            unset($post_types['advert']);
+        }
+
+        return $post_types;
+    }
+
+    /**
+     * Keep advert categories out of the core XML sitemap for unauthorized visitors.
+     *
+     * @param array<string,WP_Taxonomy> $taxonomies Sitemap taxonomies.
+     * @return array<string,WP_Taxonomy>
+     */
+    public function exclude_advert_categories_from_sitemaps($taxonomies) {
+        if (is_array($taxonomies) && !$this->current_user_can_access()) {
+            unset($taxonomies['advert_category']);
+        }
+
+        return $taxonomies;
+    }
+
+    /**
      * Make contact name and email read-only on frontend advert forms.
      *
      * The values remain visible for reference and in the form scheme because
@@ -333,7 +431,7 @@ final class WPAAG_Plugin {
             return $bind;
         }
 
-        $post_id = isset($bind['_post_id']) ? absint($bind['_post_id']) : 0;
+        $post_id = $this->resolve_request_advert_id($bind['_post_id'] ?? 0);
         $contact = $this->get_advert_contact($post_id);
 
         if ($contact) {
@@ -362,7 +460,7 @@ final class WPAAG_Plugin {
         }
 
         $data    = is_array($data) ? $data : array();
-        $post_id = isset($data['_post_id']) ? absint($data['_post_id']) : 0;
+        $post_id = $this->resolve_request_advert_id($data['_post_id'] ?? 0);
         $contact = $this->get_advert_contact($post_id);
 
         if (!$contact) {
@@ -371,6 +469,30 @@ final class WPAAG_Plugin {
 
         $form->set_value('adverts_person', $contact['name']);
         $form->set_value('adverts_email', $contact['email']);
+    }
+
+    /**
+     * Accept a submitted advert ID only when the current user may use it.
+     *
+     * The ID comes from form data, so without this check a user could name
+     * another member's advert and have that owner's contact bound into their
+     * own form. Rejected IDs fall back to the current user's profile.
+     *
+     * @param mixed $post_id Submitted advert ID.
+     * @return int
+     */
+    private function resolve_request_advert_id($post_id) {
+        $post_id = absint($post_id);
+        if (!$post_id) {
+            return 0;
+        }
+
+        $user_id = get_current_user_id();
+        if ($user_id && (int) get_post_field('post_author', $post_id) === $user_id) {
+            return $post_id;
+        }
+
+        return current_user_can('edit_post', $post_id) ? $post_id : 0;
     }
 
     /**
@@ -403,10 +525,6 @@ final class WPAAG_Plugin {
      * @return bool
      */
     public function current_user_can_access() {
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
         $user_id = get_current_user_id();
 
         // Access is evaluated on every block render and search query, so the
@@ -415,14 +533,22 @@ final class WPAAG_Plugin {
             return $this->access_cache[$user_id];
         }
 
-        $allowed = user_can($user_id, 'manage_options');
+        $allowed = false;
 
-        if (!$allowed && function_exists('arm_get_member_status')) {
-            $settings = $this->get_settings();
-            if ('valid_plan' === $settings['access_mode']) {
-                $allowed = $this->has_valid_membership($user_id);
-            } else {
-                $allowed = false !== arm_get_member_status($user_id);
+        if ($user_id) {
+            $allowed = user_can($user_id, 'manage_options');
+
+            // ARMember adds every registered WordPress user to its member
+            // table, so presence alone is not a membership signal. The default
+            // mode therefore requires ARMember's active primary status, which
+            // excludes inactive, pending, and terminated accounts.
+            if (!$allowed && function_exists('arm_is_member_active')) {
+                $settings = $this->get_settings();
+                if ('valid_plan' === $settings['access_mode']) {
+                    $allowed = $this->has_valid_membership($user_id);
+                } else {
+                    $allowed = (bool) arm_is_member_active($user_id);
+                }
             }
         }
 
@@ -430,7 +556,7 @@ final class WPAAG_Plugin {
          * Filter whether a user may access protected WPAdverts content.
          *
          * @param bool $allowed Access decision.
-         * @param int  $user_id WordPress user ID.
+         * @param int  $user_id WordPress user ID, or 0 for anonymous visitors.
          */
         $this->access_cache[$user_id] = (bool) apply_filters('wpaag_user_can_access', $allowed, $user_id);
 
@@ -476,6 +602,21 @@ final class WPAAG_Plugin {
             return true;
         }
 
+        // WordPress accepts post_type[]=advert, and an array post_type never
+        // sets is_post_type_archive, so archives and feeds built that way
+        // would otherwise list adverts.
+        if (in_array('advert', (array) get_query_var('post_type'), true)) {
+            return true;
+        }
+
+        if (is_attachment()) {
+            $attachment = get_queried_object();
+
+            return $attachment instanceof WP_Post
+                && $attachment->post_parent
+                && 'advert' === get_post_type($attachment->post_parent);
+        }
+
         if (!is_singular('page')) {
             return false;
         }
@@ -518,6 +659,10 @@ final class WPAAG_Plugin {
      * @return bool
      */
     private function is_protected_rest_route($route, $request) {
+        // WP_REST_Server matches routes case-insensitively, so /wp/v2/ADVERT
+        // reaches the advert controller. Compare against the lowercased route.
+        $route = strtolower((string) $route);
+
         $prefixes = array(
             '/wp/v2/advert',
             '/wp/v2/advert_category',
@@ -525,19 +670,42 @@ final class WPAAG_Plugin {
         );
 
         foreach ($prefixes as $prefix) {
-            if (0 === strpos($route, $prefix)) {
+            if (str_starts_with($route, $prefix)) {
                 return true;
             }
         }
 
-        if (0 === strpos($route, '/oembed/')) {
-            $url     = (string) $request->get_param('url');
+        if (preg_match('#^/wp/v2/media/(\d+)#', $route, $matches)) {
+            return 'advert' === get_post_type(wp_get_post_parent_id((int) $matches[1]));
+        }
+
+        if (preg_match('#^/wp/v2/comments/(\d+)#', $route, $matches)) {
+            $comment = get_comment((int) $matches[1]);
+
+            return $comment && 'advert' === get_post_type((int) $comment->comment_post_ID);
+        }
+
+        if (str_starts_with($route, '/oembed/')) {
+            $url = (string) $request->get_param('url');
+
+            // url_to_postid() runs a WP_Query naming the advert post type,
+            // which exclude_adverts_from_search() would empty for this very
+            // visitor, hiding the advert and turning the 401 into a 404.
+            $priority = has_action('pre_get_posts', array($this, 'exclude_adverts_from_search'));
+            if (false !== $priority) {
+                remove_action('pre_get_posts', array($this, 'exclude_adverts_from_search'), $priority);
+            }
+
             $post_id = $url ? url_to_postid($url) : 0;
+
+            if (false !== $priority) {
+                add_action('pre_get_posts', array($this, 'exclude_adverts_from_search'), $priority);
+            }
 
             return $post_id && 'advert' === get_post_type($post_id);
         }
 
-        if (0 === strpos($route, '/wp/v2/search')) {
+        if (str_starts_with($route, '/wp/v2/search')) {
             // Requests that do not name adverts explicitly stay available; the
             // pre_get_posts filter strips adverts from their results instead,
             // so site-wide REST search keeps working for anonymous visitors.
@@ -547,7 +715,7 @@ final class WPAAG_Plugin {
         }
 
         foreach (array('/wp/v2/media', '/wp/v2/comments') as $prefix) {
-            if (0 !== strpos($route, $prefix)) {
+            if (!str_starts_with($route, $prefix)) {
                 continue;
             }
 
@@ -572,16 +740,8 @@ final class WPAAG_Plugin {
      * @return void
      */
     private function redirect_to_login() {
-        $settings = $this->get_settings();
-        $target   = home_url('/');
-
-        if (isset($_SERVER['REQUEST_URI'])) {
-            $request_uri = wp_unslash($_SERVER['REQUEST_URI']);
-            $target      = home_url('/' . ltrim($request_uri, '/'));
-        }
-
         $destination_url = '';
-        $destination_id  = absint($settings['destination_page_id']);
+        $destination_id  = $this->get_destination_page_id();
 
         if ($destination_id && 'publish' === get_post_status($destination_id)) {
             $destination_url = get_permalink($destination_id);
@@ -591,9 +751,55 @@ final class WPAAG_Plugin {
             $destination_url = wp_login_url();
         }
 
-        $destination_url = add_query_arg('redirect_to', rawurlencode($target), $destination_url);
+        $destination_url = add_query_arg('redirect_to', rawurlencode($this->get_current_url()), $destination_url);
         wp_safe_redirect($destination_url, 302, 'WPAdverts_ARMember');
         exit;
+    }
+
+    /**
+     * Resolve the page an unauthorized visitor is sent to.
+     *
+     * Logged-in users who fail the access check are sent to the member
+     * destination when one is set, because a login page would either show
+     * them a form they cannot use or redirect them straight back.
+     *
+     * @return int Page ID, or 0 for the WordPress login page.
+     */
+    private function get_destination_page_id() {
+        $settings = $this->get_settings();
+
+        if (is_user_logged_in() && $settings['member_destination_page_id']) {
+            return absint($settings['member_destination_page_id']);
+        }
+
+        return absint($settings['destination_page_id']);
+    }
+
+    /**
+     * Build the absolute URL of the current request.
+     *
+     * REQUEST_URI already includes the path of a subdirectory install, so it
+     * is made relative to the home path before being passed to home_url().
+     *
+     * @return string
+     */
+    private function get_current_url() {
+        if (empty($_SERVER['REQUEST_URI'])) {
+            return home_url('/');
+        }
+
+        $request_uri = '/' . ltrim(wp_unslash($_SERVER['REQUEST_URI']), '/');
+        $home_path   = untrailingslashit((string) wp_parse_url(home_url('/'), PHP_URL_PATH));
+
+        if ('' !== $home_path) {
+            if ($request_uri === $home_path) {
+                $request_uri = '/';
+            } elseif (str_starts_with($request_uri, $home_path . '/') || str_starts_with($request_uri, $home_path . '?')) {
+                $request_uri = substr($request_uri, strlen($home_path));
+            }
+        }
+
+        return home_url('/' . ltrim($request_uri, '/'));
     }
 
     /**
@@ -687,8 +893,9 @@ final class WPAAG_Plugin {
 
         return array(
             'access_mode'         => $mode,
-            'destination_page_id' => isset($input['destination_page_id']) ? absint($input['destination_page_id']) : 0,
-            'contact_name_source' => $name_source,
+            'destination_page_id'        => isset($input['destination_page_id']) ? absint($input['destination_page_id']) : 0,
+            'member_destination_page_id' => isset($input['member_destination_page_id']) ? absint($input['member_destination_page_id']) : 0,
+            'contact_name_source'        => $name_source,
         );
     }
 
@@ -762,7 +969,7 @@ final class WPAAG_Plugin {
                             </div>
                             <select id="wpaag-access-mode" name="<?php echo esc_attr(self::OPTION_NAME); ?>[access_mode]">
                                 <option value="recognized_user" <?php selected($settings['access_mode'], 'recognized_user'); ?>>
-                                    <?php esc_html_e('Recognized ARMember user', 'wpadverts-armember'); ?>
+                                    <?php esc_html_e('Active ARMember account', 'wpadverts-armember'); ?>
                                 </option>
                                 <option value="valid_plan" <?php selected($settings['access_mode'], 'valid_plan'); ?>>
                                     <?php esc_html_e('Active ARMember account with a valid plan', 'wpadverts-armember'); ?>
@@ -770,10 +977,21 @@ final class WPAAG_Plugin {
                             </select>
                         </div>
 
+                        <?php if ('recognized_user' === $settings['access_mode']) : ?>
+                            <div class="notice notice-warning inline">
+                                <p>
+                                    <?php esc_html_e('ARMember registers every WordPress user as an active member, so this requirement admits any logged-in account that ARMember has not deactivated. Choose "Active ARMember account with a valid plan" to limit classifieds to members with a plan.', 'wpadverts-armember'); ?>
+                                    <?php if (get_option('users_can_register')) : ?>
+                                        <strong><?php esc_html_e('This site allows open registration, so anyone who creates an account can view classifieds.', 'wpadverts-armember'); ?></strong>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                        <?php endif; ?>
+
                         <div class="wpaag-field">
                             <div>
                                 <label for="wpaag-destination-page"><?php esc_html_e('Unauthorized visitor destination', 'wpadverts-armember'); ?></label>
-                                <p><?php esc_html_e('Select the page shown to visitors who do not meet the access requirement.', 'wpadverts-armember'); ?></p>
+                                <p><?php esc_html_e('Select the page shown to logged-out visitors, typically a login page.', 'wpadverts-armember'); ?></p>
                             </div>
                             <?php
                             wp_dropdown_pages(
@@ -782,6 +1000,24 @@ final class WPAAG_Plugin {
                                     'name'             => self::OPTION_NAME . '[destination_page_id]',
                                     'selected'         => absint($settings['destination_page_id']),
                                     'show_option_none' => __('WordPress login page', 'wpadverts-armember'),
+                                    'option_none_value' => '0',
+                                )
+                            );
+                            ?>
+                        </div>
+
+                        <div class="wpaag-field">
+                            <div>
+                                <label for="wpaag-member-destination-page"><?php esc_html_e('Logged-in visitor destination', 'wpadverts-armember'); ?></label>
+                                <p><?php esc_html_e('Select the page shown to logged-in users who do not meet the access requirement, such as a membership plans page. Avoid a login page that redirects logged-in users back.', 'wpadverts-armember'); ?></p>
+                            </div>
+                            <?php
+                            wp_dropdown_pages(
+                                array(
+                                    'id'                => 'wpaag-member-destination-page',
+                                    'name'              => self::OPTION_NAME . '[member_destination_page_id]',
+                                    'selected'          => absint($settings['member_destination_page_id']),
+                                    'show_option_none'  => __('Same as unauthorized visitor destination', 'wpadverts-armember'),
                                     'option_none_value' => '0',
                                 )
                             );
@@ -805,7 +1041,7 @@ final class WPAAG_Plugin {
 
                         <div class="wpaag-note">
                             <strong><?php esc_html_e('Protected surfaces', 'wpadverts-armember'); ?></strong>
-                            <span><?php esc_html_e('Single adverts, advert archives, advert categories, WPAdverts blocks and shortcodes, publishing and management pages, and advert REST routes.', 'wpadverts-armember'); ?></span>
+                            <span><?php esc_html_e('Single adverts, advert archives and feeds, advert categories, advert attachments, WPAdverts blocks and shortcodes, publishing and management pages, advert REST routes, search results, and XML sitemaps.', 'wpadverts-armember'); ?></span>
                         </div>
                     </section>
 
@@ -825,7 +1061,7 @@ final class WPAAG_Plugin {
      * @return void
      */
     public function dependency_notice() {
-        if (!current_user_can('manage_options') || function_exists('arm_get_member_status')) {
+        if (!current_user_can('manage_options') || function_exists('arm_is_member_active')) {
             return;
         }
 
@@ -840,6 +1076,10 @@ final class WPAAG_Plugin {
      * @return array
      */
     private function get_settings() {
+        if (null !== $this->settings) {
+            return $this->settings;
+        }
+
         $settings = get_option(self::OPTION_NAME, array());
         $settings = is_array($settings) ? $settings : array();
 
@@ -847,19 +1087,20 @@ final class WPAAG_Plugin {
             $settings['destination_page_id'] = url_to_postid($settings['login_url']);
         }
 
-        return wp_parse_args($settings, $this->get_default_settings());
+        $this->settings = wp_parse_args($settings, $this->get_default_settings());
+
+        return $this->settings;
     }
 
     /**
      * @return array
      */
     private function get_default_settings() {
-        $login_page = get_page_by_path('login-2');
-
         return array(
-            'access_mode'         => 'recognized_user',
-            'destination_page_id' => $login_page ? (int) $login_page->ID : 0,
-            'contact_name_source' => 'display_name',
+            'access_mode'                => 'recognized_user',
+            'destination_page_id'        => 0,
+            'member_destination_page_id' => 0,
+            'contact_name_source'        => 'display_name',
         );
     }
 

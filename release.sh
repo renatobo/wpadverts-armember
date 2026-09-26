@@ -10,6 +10,11 @@ if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
 fi
 
 TAG="v$VERSION"
+
+if [[ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]]; then
+  echo "Releases are cut from main. Check out main first."
+  exit 1
+fi
 NOTES_FILE="release-notes/$VERSION.md"
 
 if ! git diff --quiet || ! git diff --cached --quiet; then

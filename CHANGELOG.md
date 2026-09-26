@@ -4,6 +4,35 @@ All notable changes to WPAdverts_ARMember are documented here.
 
 The project uses [Semantic Versioning](https://semver.org/).
 
+## [0.5.0] - 2026-09-26
+
+### Security
+
+- Closed a frontend bypass: `?post_type[]=advert` archives and feeds listed adverts because WordPress never flags an array `post_type` query as an advert archive.
+- Closed a REST bypass: WordPress matches REST routes case-insensitively, so `/wp-json/wp/v2/ADVERT` skipped the route check. Routes are now compared lowercased.
+- The default access mode now requires ARMember's active status. ARMember adds every registered WordPress user to its member table, so the previous presence check admitted inactive, pending, and terminated accounts.
+- Adverts and advert categories are removed from the core XML sitemap for unauthorized visitors.
+- Single REST media items and comments attached to adverts are denied, and advert attachments and comments are removed from REST collections.
+- Attachment pages of advert images redirect like the advert itself.
+- oEmbed requests for adverts return 401 instead of 404. The plugin's own REST query filter hid the advert from its oEmbed check.
+- Submitted advert IDs on WPAdverts forms are honored only for the advert owner or a user who can edit the advert, so another member's contact cannot be bound into a form.
+
+### Added
+
+- Logged-in visitor destination setting, so users who are signed in but lack access go to a page such as a membership plans page instead of the login page.
+- Settings warning when the default mode is active, stating that it admits any active ARMember account, with an extra warning when open registration is enabled.
+- The `wpaag_user_can_access` filter now also runs for anonymous visitors, with a user ID of 0.
+- PHPUnit suite covering the access modes, REST routes, frontend detection, redirects, and contact ownership. CI runs it on PHP 8.0, 8.2, and 8.4.
+
+### Changed
+
+- Removed the hardcoded `login-2` default destination page. Sites that never saved settings now redirect to the WordPress login page until a destination is selected.
+- Redirect targets are correct on subdirectory installs, where the path was previously doubled.
+- The unauthorized destination page is never redirected away from itself.
+- Settings are read once per request.
+- Release packages no longer include `README.md`, `release-notes/`, or the social preview images.
+- `release.sh` refuses to run outside `main`.
+
 ## [0.4.1] - 2026-08-09
 
 ### Changed
@@ -48,6 +77,7 @@ The project uses [Semantic Versioning](https://semver.org/).
 - Branded administrator interface and Git Updater metadata.
 - Project artwork, release documentation, security policy, and packaging workflow.
 
+[0.5.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.5.0
 [0.4.1]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.4.1
 [0.4.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.4.0
 [0.3.0]: https://github.com/renatobo/wpadverts-armember/releases/tag/v0.3.0

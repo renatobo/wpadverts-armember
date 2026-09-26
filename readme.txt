@@ -5,27 +5,31 @@ Requires at least: 7.0
 Tested up to: 7.0.2
 Requires PHP: 8.0
 Requires Plugins: wpadverts, armember-membership
-Stable tag: 0.4.1
+Stable tag: 0.5.0
 License: GPLv2 or later
 
 Restricts WPAdverts pages, listings, category archives, and REST routes to ARMember users.
 
 == Description ==
 
-The default access mode permits administrators and logged-in users that exist in
-ARMember's member table. A stricter setting requires an active ARMember account
-with at least one effective, non-suspended membership plan.
+The default access mode permits administrators and logged-in users whose
+ARMember account is active. ARMember registers every WordPress user as an
+active member, so this mode admits any logged-in account ARMember has not
+deactivated. A stricter setting requires an active ARMember account with at
+least one effective, non-suspended membership plan.
 
-Configure the access mode and unauthorized-visitor destination page under
-Settings > WP Adverts <> ARMember.
+Configure the access mode and the destination pages for logged-out and
+logged-in unauthorized visitors under Settings > WP Adverts <> ARMember.
 
 Protected frontend surfaces include:
 
-* Individual `advert` posts
-* The `advert` post type archive
+* Individual `advert` posts and their attachment pages
+* The `advert` post type archive and feeds
 * `advert_category` archives
 * Pages containing WPAdverts list, search, category, publish, or manage blocks
-* REST routes that expose adverts
+* WPAdverts blocks and shortcodes wherever they render
+* REST routes that expose adverts, including advert media and comments
+* Search results and the core XML sitemap
 
 Standard files in WordPress uploads remain directly accessible. This plugin
 protects pages and REST data, not attachment-file URLs.
@@ -41,6 +45,14 @@ folder slug. Remove `armember-membership` from the `Requires Plugins` header on
 those installations.
 
 == Changelog ==
+
+= 0.5.0 =
+* Closed bypasses through `?post_type[]=advert` archives and feeds and through mixed-case REST routes.
+* The default access mode now requires an active ARMember account.
+* Removed adverts from the XML sitemap and from REST media and comment results for unauthorized visitors.
+* Protected attachment pages of advert images.
+* Added a logged-in visitor destination setting and fixed redirect URLs on subdirectory installs.
+* Removed the hardcoded `login-2` default destination page. Choose a destination in the settings if you never saved them.
 
 = 0.4.1 =
 * Displayed the plugin as "WP Adverts <> ARMember" on the Plugins screen, Settings menu, and settings page. Installation identifiers are unchanged.

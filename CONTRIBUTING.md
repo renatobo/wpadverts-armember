@@ -4,7 +4,7 @@
 
 1. Install the plugin in a local WordPress site with WPAdverts and ARMember.
 2. Make focused changes that preserve the access-control rules in `AGENTS.md`.
-3. Run `composer lint`.
+3. Run `composer install`, `composer lint`, and `composer test`.
 4. Run `./build.sh` and verify the generated ZIP.
 5. Exercise the protected frontend and REST routes with logged-out, administrator, recognized-member, and valid-plan accounts as applicable.
 

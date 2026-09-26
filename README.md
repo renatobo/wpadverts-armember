@@ -13,9 +13,9 @@ WordPress plugin that protects WPAdverts classifieds with ARMember-aware access 
 ## Features
 
 - Protects individual adverts, archives, categories, publishing pages, management pages, blocks, shortcodes, and advert REST routes.
-- Default mode permits WordPress users recognized by ARMember.
+- Default mode permits logged-in users with an active ARMember account.
 - Optional strict mode requires an active ARMember account with an effective, non-suspended plan.
-- Configurable destination page for unauthorized visitors.
+- Configurable destination pages for logged-out and logged-in unauthorized visitors.
 - Profile-synchronized advert contact name and email.
 - Configurable display-name or first-and-last-name contact source.
 - Preserves administrator access if ARMember is unavailable.
@@ -48,9 +48,9 @@ WPAdverts and ARMember must be installed and configured on the same WordPress si
 
 ## Access modes
 
-### Recognized ARMember user
+### Active ARMember account
 
-Allows administrators and logged-in users present in ARMember's member table.
+Allows administrators and logged-in users whose ARMember primary status is active. ARMember adds every registered WordPress user to its member table as active, so this admits any account ARMember has not deactivated. On sites with open registration, anyone who signs up gets access; use the valid-plan mode to restrict classifieds to members with a plan.
 
 ### Active account with a valid plan
 
@@ -76,14 +76,16 @@ The plugin protects WordPress routes and REST data. Standard attachment URLs und
 Requirements:
 
 - PHP 8.0 or newer
-- Composer 2 for metadata validation and the lint command
+- Composer 2 for metadata validation, linting, and tests
 - `zip`, `unzip`, and `rsync` for packaging
 
 Useful commands:
 
 ```bash
 composer validate --strict --no-check-lock
+composer install
 composer lint
+composer test
 ./build.sh
 ```
 

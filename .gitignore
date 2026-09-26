@@ -6,3 +6,5 @@ vendor/
 
 # Release archives are built locally into dist/ and attached to GitHub releases.
 /dist/
+composer.lock
+.phpunit.cache/

@@ -42,6 +42,15 @@ rsync -a \
   --exclude '/dist' \
   --exclude '/dist/**' \
   --exclude '*.zip' \
+  --exclude '/vendor' \
+  --exclude '/tests' \
+  --exclude '/release-notes' \
+  --exclude '/assets/social-preview.*' \
+  --exclude '.phpunit.cache/' \
+  --exclude '.phpunit.result.cache' \
+  --exclude 'phpunit.xml.dist' \
+  --exclude 'composer.lock' \
+  --exclude 'README.md' \
   --exclude 'AGENTS.md' \
   --exclude 'CONTRIBUTING.md' \
   --exclude 'build.sh' \
