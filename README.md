@@ -105,7 +105,7 @@ GitHub Releases is the primary distribution channel. Pushing a semantic version 
 - `readme.txt` — WordPress plugin metadata and changelog
 - `release-notes/` — release-specific notes
 - `build.sh` — reproducible ZIP packaging
-- `release.sh` — guarded tag and release workflow
+- `release.sh` — retirement guard; see `AGENTS.md` for labelled-PR releases
 
 ## License
 

@@ -1,0 +1,12 @@
+{
+  "main": "wpadverts-armember.php",
+  "constant": "WPAAG_VERSION",
+  "slug": "wpadverts-armember",
+  "zip": "wpadverts-armember-{version}.zip",
+  "build": "bash build.sh",
+  "php": "8.0",
+  "gates": [
+    "quality.yml"
+  ],
+  "readme": true
+}
