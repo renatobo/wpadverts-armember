@@ -33,7 +33,7 @@ trap cleanup EXIT
 mkdir -p "$PACKAGE_DIR"
 
 rsync -a \
-  --exclude '.git/' \
+  --exclude '.git' \
   --exclude '.github/' \
   --exclude '.DS_Store' \
   --exclude '.editorconfig' \
